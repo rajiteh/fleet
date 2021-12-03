@@ -67,6 +67,7 @@ type ClusterSpec struct {
 	RedeployAgentGeneration int64       `json:"redeployAgentGeneration,omitempty"`
 	AgentEnvVars            []v1.EnvVar `json:"agentEnvVars,omitempty"`
 	AgentNamespace          string      `json:"agentNamespace,omitempty"`
+	TemplateContext         *GenericMap `json:"templateContext,omitempty"`
 }
 
 type ClusterStatus struct {

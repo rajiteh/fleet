@@ -1,10 +1,12 @@
 package target
 
 import (
+	"bytes"
 	"fmt"
 	"sort"
 	"strconv"
 	"strings"
+	"text/template"
 
 	"github.com/pkg/errors"
 	fleet "github.com/rancher/fleet/pkg/apis/fleet.cattle.io/v1alpha1"
@@ -22,6 +24,9 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
+
+	"github.com/Masterminds/sprig/v3"
+	k8syaml "sigs.k8s.io/yaml"
 )
 
 var (
@@ -235,7 +240,7 @@ func (m *Manager) Targets(fleetBundle *fleet.Bundle) (result []*Target, _ error)
 			}
 
 			opts := options.Calculate(&fleetBundle.Spec, match.Target)
-			err = addClusterLabels(&opts, cluster.Labels)
+			err = addClusterLabels(&opts, cluster.Labels, cluster.Spec.TemplateContext)
 			if err != nil {
 				return nil, err
 			}
@@ -263,8 +268,14 @@ func (m *Manager) Targets(fleetBundle *fleet.Bundle) (result []*Target, _ error)
 	return result, m.foldInDeployments(fleetBundle, result)
 }
 
-func addClusterLabels(opts *fleet.BundleDeploymentOptions, labels map[string]string) (err error) {
+func addClusterLabels(opts *fleet.BundleDeploymentOptions, labels map[string]string, templateContext *fleet.GenericMap) (err error) {
 	clusterLabels := yaml.CleanAnnotationsForExport(labels)
+
+	values := map[string]interface{}{
+		"ClusterLabels": clusterLabels,
+		"Values":        templateContext,
+	}
+
 	for k, v := range labels {
 		if strings.HasPrefix(k, "fleet.cattle.io/") || strings.HasPrefix(k, "management.cattle.io/") {
 			clusterLabels[k] = v
@@ -303,7 +314,12 @@ func addClusterLabels(opts *fleet.BundleDeploymentOptions, labels map[string]str
 		return err
 	}
 
-	opts.Helm.Values.Data = data.MergeMaps(opts.Helm.Values.Data, newValues)
+	templatedValues, err := processTemplateValues(opts.Helm.Values.Data, values)
+	if err != nil {
+		return err
+	}
+
+	opts.Helm.Values.Data = data.MergeMaps(templatedValues, newValues)
 	return nil
 
 }
@@ -524,6 +540,43 @@ func Summary(targets []*Target) fleet.BundleSummary {
 		bundleSummary.DesiredReady++
 	}
 	return bundleSummary
+}
+
+// funcMap returns a mapping of all of the functions that Engine has.
+// Also remove potentially dangerous operations
+func tplFuncMap() template.FuncMap {
+	f := sprig.TxtFuncMap()
+	delete(f, "env")
+	delete(f, "expandenv")
+	delete(f, "include")
+	delete(f, "tpl")
+
+	return f
+}
+
+func processTemplateValues(valuesMap map[string]interface{}, templateContext map[string]interface{}) (map[string]interface{}, error) {
+	var tplResult bytes.Buffer
+
+	valuesMapStr, err := k8syaml.Marshal(valuesMap)
+	if err != nil {
+		return nil, err
+	}
+
+	tpl, err := template.New("values").Funcs(tplFuncMap()).Parse(string(valuesMapStr))
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tpl.Execute(&tplResult, templateContext); err != nil {
+		return nil, err
+	}
+
+	var compiledYaml map[string]interface{}
+	if err := k8syaml.Unmarshal(tplResult.Bytes(), &compiledYaml); err != nil {
+		return nil, err
+	}
+
+	return compiledYaml, nil
 }
 
 func processLabelValues(valuesMap map[string]interface{}, clusterLabels map[string]string) error {
