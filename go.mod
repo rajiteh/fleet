@@ -33,6 +33,7 @@ replace (
 
 require (
 	github.com/Masterminds/semver/v3 v3.1.1
+	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/argoproj/argo-cd v1.8.7
 	github.com/argoproj/gitops-engine v0.3.3
 	github.com/cheggaaa/pb v1.0.27
