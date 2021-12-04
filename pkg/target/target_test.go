@@ -110,6 +110,9 @@ helm:
   releaseName: labels
   values:
     clusterName: "{{ .ClusterLabels.name }}"
+    fromAnnotation: "{{ .ClusterAnnotations.testAnnotation }}"
+    clusterNamespace: "{{ .ClusterNamespace }}"
+    fleetClusterName: "{{ .ClusterName }}"
     customStruct:
       - name: "{{ .Values.topLevel }}"
         key1: value1
@@ -151,9 +154,16 @@ func TestProcessTemplateValues(t *testing.T) {
 		"envType": "dev",
 	}
 
+	clusterAnnotations := map[string]string{
+		"testAnnotation": "test",
+	}
+
 	values := map[string]interface{}{
-		"ClusterLabels": clusterLabels,
-		"Values":        templateContext,
+		"ClusterNamespace":   "dev-clusters",
+		"ClusterName":        "my-cluster",
+		"ClusterLabels":      clusterLabels,
+		"ClusterAnnotations": clusterAnnotations,
+		"Values":             templateContext,
 	}
 
 	bundle := &v1alpha1.BundleSpec{}
@@ -174,6 +184,33 @@ func TestProcessTemplateValues(t *testing.T) {
 
 	if clusterName != "local" {
 		t.Fatal("unable to assert correct clusterName")
+	}
+
+	fromAnnotation, ok := templatedValues["fromAnnotation"]
+	if !ok {
+		t.Fatal("key fromAnnotation not found")
+	}
+
+	if fromAnnotation != "test" {
+		t.Fatal("unable to assert correct value for fromAnnotation")
+	}
+
+	clusterNamespace, ok := templatedValues["clusterNamespace"]
+	if !ok {
+		t.Fatal("key clusterNamespace not found")
+	}
+
+	if clusterNamespace != "dev-clusters" {
+		t.Fatal("unable to assert correct value for clusterNamespace")
+	}
+
+	fleetClusterName, ok := templatedValues["fleetClusterName"]
+	if !ok {
+		t.Fatal("key clusterName not found")
+	}
+
+	if fleetClusterName != "my-cluster" {
+		t.Fatal("unable to assert correct value fleetClusterName")
 	}
 
 	customStruct, ok := templatedValues["customStruct"].([]interface{})
