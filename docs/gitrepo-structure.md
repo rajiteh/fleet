@@ -83,8 +83,11 @@ helm:
     variableName: global.fleet.clusterLabels.LABELNAME
   # It is possible to specify the keys and values as gotpl strings for advanced templating needs.
   # Most of the functions from sprig templating library is available.
-  # The template context has two keys. `.Values` are retrieved from cluster's `spec.templateContext`
-  # object and `.ClusterLabels` are the labels in the cluster resource.
+  # The template context has following keys.
+  # `.Values` are retrieved from cluster's `spec.templateContext`
+  # `.ClusterLabels` and `.ClusterAnnotations` are the labels and annoations in the cluster resource.
+  # `.ClusterName` as the fleet's cluster resource name.
+  # `.ClusterNamespace` as the namespace which the cluster resource exists.
     templatedLabel: "{{ .ClusterLabels.LABELNAME }}-foo"
     configForEnv:
       "{{ .ClusterLabels.ENV }}": "{{ .Values.someValue | upper }}"

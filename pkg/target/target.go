@@ -244,7 +244,7 @@ func (m *Manager) Targets(fleetBundle *fleet.Bundle) (result []*Target, _ error)
 			if cluster.Spec.TemplateContext != nil {
 				templateContext = cluster.Spec.TemplateContext.Data
 			}
-			err = addClusterLabels(&opts, cluster.Labels, templateContext)
+			err = addClusterLabels(&opts, cluster, templateContext)
 			if err != nil {
 				return nil, err
 			}
@@ -272,15 +272,19 @@ func (m *Manager) Targets(fleetBundle *fleet.Bundle) (result []*Target, _ error)
 	return result, m.foldInDeployments(fleetBundle, result)
 }
 
-func addClusterLabels(opts *fleet.BundleDeploymentOptions, labels map[string]string, templateContext map[string]interface{}) (err error) {
-	clusterLabels := yaml.CleanAnnotationsForExport(labels)
+func addClusterLabels(opts *fleet.BundleDeploymentOptions, cluster *fleet.Cluster, templateContext map[string]interface{}) (err error) {
+	clusterLabels := yaml.CleanAnnotationsForExport(cluster.Labels)
+	clusterAnnotations := yaml.CleanAnnotationsForExport(cluster.Annotations)
 
 	values := map[string]interface{}{
-		"ClusterLabels": clusterLabels,
-		"Values":        templateContext,
+		"ClusterNamespace":   cluster.Namespace,
+		"ClusterName":        cluster.Name,
+		"ClusterLabels":      clusterLabels,
+		"ClusterAnnotations": clusterAnnotations,
+		"Values":             templateContext,
 	}
 
-	for k, v := range labels {
+	for k, v := range cluster.Labels {
 		if strings.HasPrefix(k, "fleet.cattle.io/") || strings.HasPrefix(k, "management.cattle.io/") {
 			clusterLabels[k] = v
 		}
