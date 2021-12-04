@@ -1763,6 +1763,10 @@ spec:
                 type: boolean
               redeployAgentGeneration:
                 type: integer
+              templateContext:
+                nullable: true
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
             type: object
           status:
             properties:
@@ -4438,6 +4442,10 @@ spec:
               type: boolean
             redeployAgentGeneration:
               type: integer
+            templateContext:
+              nullable: true
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
           type: object
         status:
           properties:

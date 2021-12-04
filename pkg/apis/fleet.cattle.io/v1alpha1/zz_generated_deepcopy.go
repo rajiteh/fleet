@@ -1006,6 +1006,10 @@ func (in *ClusterSpec) DeepCopyInto(out *ClusterSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.TemplateContext != nil {
+		in, out := &in.TemplateContext, &out.TemplateContext
+		*out = (*in).DeepCopy()
+	}
 	return
 }
 
