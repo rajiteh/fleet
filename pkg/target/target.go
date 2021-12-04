@@ -222,7 +222,11 @@ func (m *Manager) Targets(fleetBundle *fleet.Bundle) (result []*Target, _ error)
 			}
 
 			opts := options.Calculate(&fleetBundle.Spec, match.Target)
-			err = addClusterLabels(&opts, cluster.Labels, cluster.Spec.TemplateContext)
+			templateContext := map[string]interface{}{}
+			if cluster.Spec.TemplateContext != nil {
+				templateContext = cluster.Spec.TemplateContext.Data
+			}
+			err = addClusterLabels(&opts, cluster.Labels, templateContext)
 			if err != nil {
 				return nil, err
 			}
@@ -250,7 +254,7 @@ func (m *Manager) Targets(fleetBundle *fleet.Bundle) (result []*Target, _ error)
 	return result, m.foldInDeployments(fleetBundle, result)
 }
 
-func addClusterLabels(opts *fleet.BundleDeploymentOptions, labels map[string]string, templateContext *fleet.GenericMap) (err error) {
+func addClusterLabels(opts *fleet.BundleDeploymentOptions, labels map[string]string, templateContext map[string]interface{}) (err error) {
 	clusterLabels := yaml.CleanAnnotationsForExport(labels)
 
 	values := map[string]interface{}{
