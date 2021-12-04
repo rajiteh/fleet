@@ -81,6 +81,13 @@ helm:
   # All labels on Rancher clusters are available using global.fleet.clusterLabels.LABELNAME
   # These can now be accessed directly as variables
     variableName: global.fleet.clusterLabels.LABELNAME
+  # It is possible to specify the keys and values as gotpl strings for advanced templating needs.
+  # Most of the functions from sprig templating library is available.
+  # The template context has two keys. `.Values` are retrieved from cluster's `spec.templateContext`
+  # object and `.ClusterLabels` are the labels in the cluster resource.
+    templatedLabel: "{{ .ClusterLabels.LABELNAME }}-foo"
+    configForEnv:
+      "{{ .ClusterLabels.ENV }}": "{{ .Values.someValue | upper }}"
   # Path to any values files that need to be passed to helm during install
   valuesFiles:
     - values1.yaml
@@ -90,7 +97,7 @@ helm:
   - configMapKeyRef:
       name: configmap-values
       # default to namespace of bundle
-      namespace: default 
+      namespace: default
       key: values.yaml
     secretKeyRef:
       name: secret-values
@@ -139,7 +146,7 @@ rolloutStrategy:
       clusterGroup: agroup
       # Selector matching cluster group labels to include in this partition
       clusterGroupSelector: agroup
-      
+
 # Target customization are used to determine how resources should be modified per target
 # Targets are evaluated in order and the first one to match a cluster is used for that cluster.
 targetCustomizations:
@@ -179,24 +186,24 @@ targetCustomizations:
 # dependsOn allows you to configure dependencies to other bundles. The current bundle
 # will only be deployed, after all dependencies are deployed and in a Ready state.
 dependsOn:
-  # Format: <GITREPO-NAME>-<BUNDLE_PATH> with all path separators replaced by "-" 
+  # Format: <GITREPO-NAME>-<BUNDLE_PATH> with all path separators replaced by "-"
   # Example: GitRepo name "one", Bundle path "/multi-cluster/hello-world" => "one-multi-cluster-hello-world"
   - name: one-multi-cluster-hello-world
 ```
 
 !!! hint "Private Helm Repo"
     For a private Helm repo, users can reference a secret with the following keys:
-    
+
     1. `username` and `password` for basic http auth if the Helm HTTP repo is behind basic auth.
-    
+
     2. `cacerts` for custom CA bundle if the Helm repo is using a custom CA.
-    
+
     3. `ssh-privatekey` for ssh private key if repo is using ssh protocol. Private key with passphase is not supported currently.
-    
-    For example, to add a secret in kubectl, run 
-    
+
+    For example, to add a secret in kubectl, run
+
     `kubectl create secret -n $namespace generic helm --from-literal=username=foo --from-literal=password=bar --from-file=cacerts=/path/to/cacerts --from-file=ssh-privatekey=/path/to/privatekey.pem`
-    
+
     After secret is created, specify the secret to `gitRepo.spec.helmSecretName`. Make sure secret is created under the same namespace with gitrepo.
 
 ### Using ValuesFrom
@@ -211,7 +218,7 @@ kind: ConfigMap
 metadata:
   name: configmap-values
   namespace: default
-data:  
+data:
   values.yaml: |-
     replication: true
     replicas: 2
