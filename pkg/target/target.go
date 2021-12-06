@@ -532,8 +532,7 @@ func Summary(targets []*Target) fleet.BundleSummary {
 	return bundleSummary
 }
 
-// funcMap returns a mapping of all of the functions that Engine has.
-// Also remove potentially dangerous operations
+// tplFuncMap returns a mapping of all of the functions from sprig but removes potentially dangerous operations
 func tplFuncMap() template.FuncMap {
 	f := sprig.TxtFuncMap()
 	delete(f, "env")
@@ -552,7 +551,7 @@ func processTemplateValues(valuesMap map[string]interface{}, templateContext map
 		return nil, err
 	}
 
-	tpl, err := template.New("values").Funcs(tplFuncMap()).Parse(string(valuesMapStr))
+	tpl, err := template.New("values").Funcs(tplFuncMap()).Option("missingkey=error").Parse(string(valuesMapStr))
 	if err != nil {
 		return nil, err
 	}
