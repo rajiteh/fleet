@@ -1,8 +1,8 @@
 apiVersion: v2
 name: fleet-crd
 description: Fleet Manager CustomResourceDefinitions
-version: 0.0.0
-appVersion: 0.0.0
+version: 100.0.2+up0.3.8
+appVersion: 0.3.8
 icon: https://charts.rancher.io/assets/logos/fleet.svg
 annotations:
   catalog.cattle.io/certified: rancher

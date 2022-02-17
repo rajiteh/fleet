@@ -230,10 +230,10 @@ type HelmOptions struct {
 	Values           *GenericMap  `json:"values,omitempty"`
 	ValuesFrom       []ValuesFrom `json:"valuesFrom,omitempty"`
 	Force            bool         `json:"force,omitempty"`
-	EnableTemplating bool         `json:"enableTemplating,omitempty"`
 	TakeOwnership    bool         `json:"takeOwnership,omitempty"`
 	MaxHistory       int          `json:"maxHistory,omitempty"`
 	ValuesFiles      []string     `json:"valuesFiles,omitempty"`
+	PreProcessValues bool         `json:"preProcessValues,omitempty"`
 }
 
 // Define helm values that can come from configmap, secret or external. Credit: https://github.com/fluxcd/helm-operator/blob/0cfea875b5d44bea995abe7324819432070dfbdc/pkg/apis/helm.fluxcd.io/v1/types_helmrelease.go#L439
