@@ -25,7 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/Masterminds/sprig/v3"
-	k8syaml "sigs.k8s.io/yaml"
+	goyaml "gopkg.in/yaml.v3"
 )
 
 var (
@@ -546,7 +546,7 @@ func tplFuncMap() template.FuncMap {
 func processTemplateValues(valuesMap map[string]interface{}, templateContext map[string]interface{}) (map[string]interface{}, error) {
 	var tplResult bytes.Buffer
 
-	valuesMapStr, err := k8syaml.Marshal(valuesMap)
+	valuesMapStr, err := goyaml.Marshal(valuesMap)
 	if err != nil {
 		return nil, err
 	}
@@ -561,7 +561,7 @@ func processTemplateValues(valuesMap map[string]interface{}, templateContext map
 	}
 
 	var compiledYaml map[string]interface{}
-	if err := k8syaml.Unmarshal(tplResult.Bytes(), &compiledYaml); err != nil {
+	if err := goyaml.Unmarshal(tplResult.Bytes(), &compiledYaml); err != nil {
 		return nil, err
 	}
 
