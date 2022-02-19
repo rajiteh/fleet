@@ -26,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/Masterminds/sprig/v3"
-	goyaml "gopkg.in/yaml.v3"
 )
 
 var (
@@ -562,28 +561,67 @@ func tplFuncMap() template.FuncMap {
 }
 
 func processTemplateValues(valuesMap map[string]interface{}, templateContext map[string]interface{}) (map[string]interface{}, error) {
-	var tplResult bytes.Buffer
-
-	valuesMapStr, err := goyaml.Marshal(valuesMap)
+	tplFn := template.New("values").Funcs(tplFuncMap()).Option("missingkey=error")
+	tplResult, err := templateSubstitutions(valuesMap, templateContext, tplFn)
 	if err != nil {
 		return nil, err
 	}
-
-	tpl, err := template.New("values").Funcs(tplFuncMap()).Option("missingkey=error").Parse(string(valuesMapStr))
-	if err != nil {
-		return nil, err
-	}
-
-	if err := tpl.Execute(&tplResult, templateContext); err != nil {
-		return nil, err
-	}
-
-	var compiledYaml map[string]interface{}
-	if err := goyaml.Unmarshal(tplResult.Bytes(), &compiledYaml); err != nil {
-		return nil, err
+	compiledYaml, ok := tplResult.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("templated result was expected to be map[string]interface{}, got %T", tplResult)
 	}
 
 	return compiledYaml, nil
+}
+
+func templateSubstitutions(src interface{}, templateContext map[string]interface{}, tplFn *template.Template) (interface{}, error) {
+	switch tplVal := src.(type) {
+	case string:
+		tpl, err := tplFn.Parse(tplVal)
+		if err != nil {
+			return nil, err
+		}
+
+		var tplBytes bytes.Buffer
+		defer func() {
+			if r := recover(); r != nil {
+				err = fmt.Errorf("failed to process template substitution for strung '%s': [%v]", tplVal, err)
+			}
+		}()
+		err = tpl.Execute(&tplBytes, templateContext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to process template substitution for string '%s': [%v]", tplVal, err)
+		}
+		return tplBytes.String(), nil
+	case map[string]interface{}:
+		newMap := make(map[string]interface{})
+		for key, val := range tplVal {
+			processedKey, err := templateSubstitutions(key, templateContext, tplFn)
+			if err != nil {
+				return nil, err
+			}
+			keyAsString, ok := processedKey.(string)
+			if !ok {
+				return nil, fmt.Errorf("expected a string to be returned, but instead got [%T]", processedKey)
+			}
+			if newMap[keyAsString], err = templateSubstitutions(val, templateContext, tplFn); err != nil {
+				return nil, err
+			}
+		}
+		return newMap, nil
+	case []interface{}:
+		newSlice := make([]interface{}, len(tplVal))
+		for i, v := range tplVal {
+			newVal, err := templateSubstitutions(v, templateContext, tplFn)
+			if err != nil {
+				return nil, err
+			}
+			newSlice[i] = newVal
+		}
+		return newSlice, nil
+	default:
+		return tplVal, nil
+	}
 }
 
 func processLabelValues(valuesMap map[string]interface{}, clusterLabels map[string]string) error {
