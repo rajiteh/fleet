@@ -113,7 +113,7 @@ helm:
     fromAnnotation: "{{ .ClusterAnnotations.testAnnotation }}"
     clusterNamespace: "{{ .ClusterNamespace }}"
     fleetClusterName: "{{ .ClusterName }}"
-    reallyLongClusterName: kubernets.io/cluster/{{ index .ClusterLabels "really-long-label-name-with-many-characters-in-it" }}
+    reallyLongClusterName: kubernets.io/cluster/{{ index .ClusterLabels "really-long-label-name-with-many-many-characters-in-it" }}
     customStruct:
       - name: "{{ .Values.topLevel }}"
         key1: value1
@@ -153,7 +153,7 @@ func TestProcessTemplateValues(t *testing.T) {
 	clusterLabels := map[string]string{
 		"name":    "local",
 		"envType": "dev",
-		"really-long-label-name-with-many-characters-in-it": "foobar",
+		"really-long-label-name-with-many-many-characters-in-it": "foobar",
 	}
 
 	clusterAnnotations := map[string]string{
