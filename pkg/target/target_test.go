@@ -113,6 +113,7 @@ helm:
     fromAnnotation: "{{ .ClusterAnnotations.testAnnotation }}"
     clusterNamespace: "{{ .ClusterNamespace }}"
     fleetClusterName: "{{ .ClusterName }}"
+    reallyLongClusterName: kubernets.io/cluster/{{ index .ClusterLabels "really-long-label-name-with-many-many-characters-in-it" }}
     customStruct:
       - name: "{{ .Values.topLevel }}"
         key1: value1
@@ -152,6 +153,7 @@ func TestProcessTemplateValues(t *testing.T) {
 	clusterLabels := map[string]string{
 		"name":    "local",
 		"envType": "dev",
+		"really-long-label-name-with-many-many-characters-in-it": "foobar",
 	}
 
 	clusterAnnotations := map[string]string{
@@ -211,6 +213,15 @@ func TestProcessTemplateValues(t *testing.T) {
 
 	if fleetClusterName != "my-cluster" {
 		t.Fatal("unable to assert correct value fleetClusterName")
+	}
+
+	reallyLongClusterName, ok := templatedValues["reallyLongClusterName"]
+	if !ok {
+		t.Fatal("key reallyLongClusterName not found")
+	}
+
+	if reallyLongClusterName != "kubernets.io/cluster/foobar" {
+		t.Fatal("unable to assert correct value reallyLongClusterName")
 	}
 
 	customStruct, ok := templatedValues["customStruct"].([]interface{})
