@@ -116,12 +116,12 @@ spec:
                   chart:
                     nullable: true
                     type: string
+                  disablePreProcess:
+                    type: boolean
                   force:
                     type: boolean
                   maxHistory:
                     type: integer
-                  preProcessValues:
-                    type: boolean
                   releaseName:
                     nullable: true
                     type: string
@@ -485,12 +485,12 @@ spec:
                         chart:
                           nullable: true
                           type: string
+                        disablePreProcess:
+                          type: boolean
                         force:
                           type: boolean
                         maxHistory:
                           type: integer
-                        preProcessValues:
-                          type: boolean
                         releaseName:
                           nullable: true
                           type: string
@@ -994,12 +994,12 @@ spec:
                       chart:
                         nullable: true
                         type: string
+                      disablePreProcess:
+                        type: boolean
                       force:
                         type: boolean
                       maxHistory:
                         type: integer
-                      preProcessValues:
-                        type: boolean
                       releaseName:
                         nullable: true
                         type: string
@@ -1139,12 +1139,12 @@ spec:
                       chart:
                         nullable: true
                         type: string
+                      disablePreProcess:
+                        type: boolean
                       force:
                         type: boolean
                       maxHistory:
                         type: integer
-                      preProcessValues:
-                        type: boolean
                       releaseName:
                         nullable: true
                         type: string
@@ -2799,12 +2799,12 @@ spec:
                 chart:
                   nullable: true
                   type: string
+                disablePreProcess:
+                  type: boolean
                 force:
                   type: boolean
                 maxHistory:
                   type: integer
-                preProcessValues:
-                  type: boolean
                 releaseName:
                   nullable: true
                   type: string
@@ -3168,12 +3168,12 @@ spec:
                       chart:
                         nullable: true
                         type: string
+                      disablePreProcess:
+                        type: boolean
                       force:
                         type: boolean
                       maxHistory:
                         type: integer
-                      preProcessValues:
-                        type: boolean
                       releaseName:
                         nullable: true
                         type: string
@@ -3678,12 +3678,12 @@ spec:
                     chart:
                       nullable: true
                       type: string
+                    disablePreProcess:
+                      type: boolean
                     force:
                       type: boolean
                     maxHistory:
                       type: integer
-                    preProcessValues:
-                      type: boolean
                     releaseName:
                       nullable: true
                       type: string
@@ -3823,12 +3823,12 @@ spec:
                     chart:
                       nullable: true
                       type: string
+                    disablePreProcess:
+                      type: boolean
                     force:
                       type: boolean
                     maxHistory:
                       type: integer
-                    preProcessValues:
-                      type: boolean
                     releaseName:
                       nullable: true
                       type: string

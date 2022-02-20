@@ -289,12 +289,12 @@ func addClusterLabels(opts *fleet.BundleDeploymentOptions, cluster *fleet.Cluste
 		return err
 	}
 
-	if opts.Helm.PreProcessValues {
+	if opts.Helm.DisablePreProcess == false {
 		opts.Helm.Values.Data, err = processTemplateValues(opts.Helm.Values.Data, values)
 		if err != nil {
 			return err
 		}
-		logrus.Debugf("preProcessValues completed for %v", opts.Helm.ReleaseName)
+		logrus.Debugf("preProcess completed for %v", opts.Helm.ReleaseName)
 	}
 
 	return nil
