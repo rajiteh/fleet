@@ -116,6 +116,8 @@ spec:
                   chart:
                     nullable: true
                     type: string
+                  disablePreProcess:
+                    type: boolean
                   force:
                     type: boolean
                   maxHistory:
@@ -483,6 +485,8 @@ spec:
                         chart:
                           nullable: true
                           type: string
+                        disablePreProcess:
+                          type: boolean
                         force:
                           type: boolean
                         maxHistory:
@@ -990,6 +994,8 @@ spec:
                       chart:
                         nullable: true
                         type: string
+                      disablePreProcess:
+                        type: boolean
                       force:
                         type: boolean
                       maxHistory:
@@ -1133,6 +1139,8 @@ spec:
                       chart:
                         nullable: true
                         type: string
+                      disablePreProcess:
+                        type: boolean
                       force:
                         type: boolean
                       maxHistory:
@@ -2791,6 +2799,8 @@ spec:
                 chart:
                   nullable: true
                   type: string
+                disablePreProcess:
+                  type: boolean
                 force:
                   type: boolean
                 maxHistory:
@@ -3158,6 +3168,8 @@ spec:
                       chart:
                         nullable: true
                         type: string
+                      disablePreProcess:
+                        type: boolean
                       force:
                         type: boolean
                       maxHistory:
@@ -3666,6 +3678,8 @@ spec:
                     chart:
                       nullable: true
                       type: string
+                    disablePreProcess:
+                      type: boolean
                     force:
                       type: boolean
                     maxHistory:
@@ -3809,6 +3823,8 @@ spec:
                     chart:
                       nullable: true
                       type: string
+                    disablePreProcess:
+                      type: boolean
                     force:
                       type: boolean
                     maxHistory:
