@@ -75,6 +75,7 @@ func merge(base, next fleet.BundleDeploymentOptions) fleet.BundleDeploymentOptio
 		}
 		result.Helm.Force = result.Helm.Force || next.Helm.Force
 		result.Helm.TakeOwnership = result.Helm.TakeOwnership || next.Helm.TakeOwnership
+		result.Helm.DisablePreProcess = result.Helm.DisablePreProcess || next.Helm.DisablePreProcess
 	}
 	if next.Kustomize != nil {
 		if result.Kustomize == nil {

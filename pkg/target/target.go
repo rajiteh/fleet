@@ -15,7 +15,6 @@ import (
 	"github.com/rancher/fleet/pkg/manifest"
 	"github.com/rancher/fleet/pkg/options"
 	"github.com/rancher/fleet/pkg/summary"
-	"github.com/rancher/wrangler/pkg/data"
 	corecontrollers "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/rancher/wrangler/pkg/name"
 	"github.com/rancher/wrangler/pkg/yaml"
@@ -237,7 +236,6 @@ func (m *Manager) Targets(fleetBundle *fleet.Bundle) (result []*Target, _ error)
 			if match == nil {
 				continue
 			}
-
 			opts := options.Calculate(&fleetBundle.Spec, match.Target)
 			templateContext := map[string]interface{}{}
 			if cluster.Spec.TemplateContext != nil {
@@ -292,27 +290,15 @@ func addClusterLabels(opts *fleet.BundleDeploymentOptions, cluster *fleet.Cluste
 		return
 	}
 
-	newValues := map[string]interface{}{
-		"global": map[string]interface{}{
-			"fleet": map[string]interface{}{
-				"clusterLabels": clusterLabels,
-			},
-		},
-	}
-
 	if opts.Helm == nil {
-		opts.Helm = &fleet.HelmOptions{
-			Values: &fleet.GenericMap{
-				Data: newValues,
-			},
-		}
+		opts.Helm = &fleet.HelmOptions{}
 		return nil
 	}
 
 	opts.Helm = opts.Helm.DeepCopy()
 	if opts.Helm.Values == nil || opts.Helm.Values.Data == nil {
 		opts.Helm.Values = &fleet.GenericMap{
-			Data: newValues,
+			Data: map[string]interface{}{},
 		}
 		return nil
 	}
@@ -321,12 +307,14 @@ func addClusterLabels(opts *fleet.BundleDeploymentOptions, cluster *fleet.Cluste
 		return err
 	}
 
-	templatedValues, err := processTemplateValues(opts.Helm.Values.Data, values)
-	if err != nil {
-		return err
+	if opts.Helm.DisablePreProcess == false {
+		opts.Helm.Values.Data, err = processTemplateValues(opts.Helm.Values.Data, values)
+		if err != nil {
+			return err
+		}
+		logrus.Debugf("preProcess completed for %v", opts.Helm.ReleaseName)
 	}
 
-	opts.Helm.Values.Data = data.MergeMaps(templatedValues, newValues)
 	return nil
 
 }
