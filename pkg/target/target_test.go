@@ -311,9 +311,9 @@ spec:
     someKey: someValue
 `
 
-func getClusterAndBundle(bundleYaml string) (*v1alpha1.Cluster, *v1alpha1.BundleDeploymentOptions, error) {
+func getClusterAndBundle(clusterYaml string, bundleYaml string) (*v1alpha1.Cluster, *v1alpha1.BundleDeploymentOptions, error) {
 	cluster := &v1alpha1.Cluster{}
-	err := yaml.Unmarshal([]byte(clusterYamlWithTemplateValues), cluster)
+	err := yaml.Unmarshal([]byte(clusterYaml), cluster)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "error during cluster yaml parsing")
 	}
@@ -329,17 +329,18 @@ func getClusterAndBundle(bundleYaml string) (*v1alpha1.Cluster, *v1alpha1.Bundle
 
 const bundleYamlWithDisablePreProcessEnabled = `namespace: default
 helm:
-  disablePreprocess: true
+  disablePreProcess: true
   releaseName: labels
   values:
     clusterName: "{{ .ClusterName }}"
     clusterContext: "{{ .Values.someKey }}"
     templateFn: '{{ index .ClusterLabels "testLabel" }}'
     syntaxError: "{{ non_existent_function }}"
+    secretEntry: ref+echo://foo/bar/direct#/foo/bar
 `
 
 func TestDisablePreProcessFlagEnabled(t *testing.T) {
-	cluster, bundle, err := getClusterAndBundle(bundleYamlWithDisablePreProcessEnabled)
+	cluster, bundle, err := getClusterAndBundle(clusterYamlWithTemplateValues, bundleYamlWithDisablePreProcessEnabled)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -371,6 +372,10 @@ func TestDisablePreProcessFlagEnabled(t *testing.T) {
 			Key:           "syntaxError",
 			ExpectedValue: "{{ non_existent_function }}",
 		},
+		{
+			Key:           "secretEntry",
+			ExpectedValue: "ref+echo://foo/bar/direct#/foo/bar",
+		},
 	} {
 		if field, ok := valuesObj[testCase.Key]; !ok {
 			t.Fatalf("key %s not found", testCase.Key)
@@ -386,14 +391,14 @@ func TestDisablePreProcessFlagEnabled(t *testing.T) {
 
 const bundleYamlWithDisablePreProcessDisabled = `namespace: default
 helm:
-  disablePreprocess: false
+  disablePreProcess: false
   releaseName: labels
   values:
     clusterName: "{{ .ClusterName }}"
 `
 
 func TestDisablePreProcessFlagDisabled(t *testing.T) {
-	cluster, bundle, err := getClusterAndBundle(bundleYamlWithDisablePreProcessDisabled)
+	cluster, bundle, err := getClusterAndBundle(clusterYamlWithTemplateValues, bundleYamlWithDisablePreProcessDisabled)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -426,7 +431,7 @@ helm:
 `
 
 func TestDisablePreProcessFlagMissing(t *testing.T) {
-	cluster, bundle, err := getClusterAndBundle(bundleYamlWithDisablePreProcessMissing)
+	cluster, bundle, err := getClusterAndBundle(clusterYamlWithTemplateValues, bundleYamlWithDisablePreProcessMissing)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -448,6 +453,63 @@ func TestDisablePreProcessFlagMissing(t *testing.T) {
 			t.Fatalf("key %s was not the expected value. Expected: '%s' Actual: '%s'", key, field, expectedValue)
 		}
 	}
+}
+
+const clusterYamlWithSecrets = `apiVersion: fleet.cattle.io/v1alpha1
+kind: Cluster
+metadata:
+  name: test-cluster
+  namespace: test-namespace
+  labels:
+    testLabel: test-label-value
+spec:
+  templateValues:
+    testSecret: ref+echo://secret/from/templatedSecret#/secret/from
+`
+
+const bundleYamlWithTemplatedSecrets = `namespace: default
+helm:
+  releaseName: labels
+  values:
+    directSecretResolution: "ref+echo://foo/bar/direct#/foo/bar"
+    templatedSecretResolution: "{{ .ClusterValues.testSecret }}"
+`
+
+func TestSecretPreProcessingPipeline(t *testing.T) {
+	cluster, bundle, err := getClusterAndBundle(clusterYamlWithSecrets, bundleYamlWithTemplatedSecrets)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	err = preprocessHelmValues(bundle, cluster)
+	if err != nil {
+		t.Fatalf("error during cluster processing %v", err)
+	}
+
+	valuesObj := bundle.Helm.Values.Data
+
+	for _, testCase := range []struct {
+		Key           string
+		ExpectedValue string
+	}{
+		{
+			Key:           "directSecretResolution",
+			ExpectedValue: "direct",
+		},
+		{
+			Key:           "templatedSecretResolution",
+			ExpectedValue: "templatedSecret",
+		},
+	} {
+		if field, ok := valuesObj[testCase.Key]; !ok {
+			t.Fatalf("key %s not found", testCase.Key)
+		} else {
+			if field != testCase.ExpectedValue {
+				t.Fatalf("key %s was not the expected value. Expected: '%s' Actual: '%s'", testCase.Key, field, testCase.ExpectedValue)
+			}
+		}
+
+	}
 
 }
 
@@ -464,7 +526,7 @@ helm:
 	}
 	bundleYaml = bundleYaml + " final_value"
 
-	cluster, bundle, err := getClusterAndBundle(bundleYaml)
+	cluster, bundle, err := getClusterAndBundle(clusterYamlWithTemplateValues, bundleYaml)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

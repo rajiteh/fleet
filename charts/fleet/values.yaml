@@ -70,3 +70,6 @@ debugLevel: 0
 #    hostPath:
 #      path: /tmp/pprof
 #      type: DirectoryOrCreate
+
+## Additional environment variables to be injected to the fleet-controller container
+additionalEnvs: {}
