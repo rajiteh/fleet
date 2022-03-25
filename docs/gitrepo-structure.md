@@ -108,7 +108,7 @@ helm:
       key: values.yaml
   # Override immutable resources. This could be dangerous.
   force: false
-  # Disable go template pre-prosessing on the fleet values
+  # Disable go template pre-processing on the fleet values
   disablePreProcess: false
 
 # A paused bundle will not update downstream clusters but instead mark the bundle

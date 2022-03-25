@@ -6,6 +6,7 @@ import (
 	"github.com/rancher/wrangler/pkg/yaml"
 
 	"github.com/rancher/fleet/pkg/apis/fleet.cattle.io/v1alpha1"
+	fleet "github.com/rancher/fleet/pkg/apis/fleet.cattle.io/v1alpha1"
 )
 
 const bundleYaml = `namespace: default
@@ -292,6 +293,47 @@ func TestProcessTemplateValues(t *testing.T) {
 
 	if join.(string) != "alpha,beta,omega" {
 		t.Fatal("join func was not right")
+	}
+
+}
+
+func TestAddClusterLabels(t *testing.T) {
+	templateContext := map[string]interface{}{}
+
+	cluster := &fleet.Cluster{}
+	cluster.ObjectMeta.Name = "local"
+	cluster.ObjectMeta.Labels = map[string]string{"name": "local"}
+
+	const bundleYaml = `namespace: default
+helm:
+  releaseName: disablePreProcessTests
+  values:
+    clusterName: "{{ .ClusterLabels.name }}"
+`
+	opts := &fleet.BundleDeploymentOptions{}
+	err := yaml.Unmarshal([]byte(bundleYaml), opts)
+	if err != nil {
+		t.Fatalf("error during yaml parsing %v", err)
+	}
+
+	clusterOpts := opts.DeepCopy()
+	clusterOpts.Helm.DisablePreProcess = false
+	err = addClusterLabels(clusterOpts, cluster, templateContext)
+	if err != nil {
+		t.Fatalf("error during addClusterLabels %v", err)
+	}
+	if clusterOpts.Helm.Values.Data["clusterName"] != "local" {
+		t.Fatal("template replacement not performed for clusterName")
+	}
+
+	clusterOpts = opts.DeepCopy()
+	clusterOpts.Helm.DisablePreProcess = true
+	err = addClusterLabels(opts, cluster, templateContext)
+	if err != nil {
+		t.Fatalf("error during addClusterLabels %v", err)
+	}
+	if clusterOpts.Helm.Values.Data["clusterName"] != "{{ .ClusterLabels.name }}" {
+		t.Fatalf("template replacement was performed for clusterName")
 	}
 
 }
