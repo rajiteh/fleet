@@ -237,11 +237,8 @@ func (m *Manager) Targets(fleetBundle *fleet.Bundle) (result []*Target, _ error)
 				continue
 			}
 			opts := options.Calculate(&fleetBundle.Spec, match.Target)
-			templateContext := map[string]interface{}{}
-			if cluster.Spec.TemplateContext != nil {
-				templateContext = cluster.Spec.TemplateContext.Data
-			}
-			err = addClusterLabels(&opts, cluster, templateContext)
+
+			err = addClusterLabels(&opts, cluster)
 			if err != nil {
 				return nil, err
 			}
@@ -269,7 +266,7 @@ func (m *Manager) Targets(fleetBundle *fleet.Bundle) (result []*Target, _ error)
 	return result, m.foldInDeployments(fleetBundle, result)
 }
 
-func addClusterLabels(opts *fleet.BundleDeploymentOptions, cluster *fleet.Cluster, templateContext map[string]interface{}) (err error) {
+func addClusterLabels(opts *fleet.BundleDeploymentOptions, cluster *fleet.Cluster) (err error) {
 	clusterLabels := yaml.CleanAnnotationsForExport(cluster.Labels)
 	clusterAnnotations := yaml.CleanAnnotationsForExport(cluster.Annotations)
 
@@ -299,7 +296,13 @@ func addClusterLabels(opts *fleet.BundleDeploymentOptions, cluster *fleet.Cluste
 		return err
 	}
 
-	if opts.Helm.DisablePreProcess == false {
+	if !opts.Helm.DisablePreProcess {
+
+		templateContext := map[string]interface{}{}
+		if cluster.Spec.TemplateContext != nil {
+			templateContext = cluster.Spec.TemplateContext.Data
+		}
+
 		values := map[string]interface{}{
 			"ClusterNamespace":   cluster.Namespace,
 			"ClusterName":        cluster.Name,

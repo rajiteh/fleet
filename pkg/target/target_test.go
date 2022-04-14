@@ -3,6 +3,7 @@ package target
 import (
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/rancher/wrangler/pkg/yaml"
 
 	"github.com/rancher/fleet/pkg/apis/fleet.cattle.io/v1alpha1"
@@ -292,6 +293,158 @@ func TestProcessTemplateValues(t *testing.T) {
 
 	if join.(string) != "alpha,beta,omega" {
 		t.Fatal("join func was not right")
+	}
+
+}
+
+const clusterYamlWithTemplateContext = `apiVersion: fleet.cattle.io/v1alpha1
+kind: Cluster
+metadata:
+  name: test-cluster
+  namespace: test-namespace
+  labels:
+    testLabel: test-label-value
+spec:
+  templateContext:
+    someKey: someValue
+`
+
+func getClusterAndBundle(clusterYaml string, bundleYaml string) (*v1alpha1.Cluster, *v1alpha1.BundleDeploymentOptions, error) {
+	cluster := &v1alpha1.Cluster{}
+	err := yaml.Unmarshal([]byte(clusterYaml), cluster)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "error during cluster yaml parsing")
+	}
+
+	bundle := &v1alpha1.BundleDeploymentOptions{}
+	err = yaml.Unmarshal([]byte(bundleYaml), bundle)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "error during bundle yaml parsing")
+	}
+
+	return cluster, bundle, nil
+}
+
+const bundleYamlWithDisablePreProcessEnabled = `namespace: default
+helm:
+  disablePreProcess: true
+  releaseName: labels
+  values:
+    clusterName: "{{ .ClusterName }}"
+    clusterContext: "{{ .Values.someKey }}"
+    templateFn: '{{ index .ClusterLabels "testLabel" }}'
+    syntaxError: "{{ non_existent_function }}"
+`
+
+func TestDisablePreProcessFlagEnabled(t *testing.T) {
+	cluster, bundle, err := getClusterAndBundle(clusterYamlWithTemplateContext, bundleYamlWithDisablePreProcessEnabled)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	err = addClusterLabels(bundle, cluster)
+	if err != nil {
+		t.Fatalf("error during cluster processing %v", err)
+	}
+
+	valuesObj := bundle.Helm.Values.Data
+
+	for _, testCase := range []struct {
+		Key           string
+		ExpectedValue string
+	}{
+		{
+			Key:           "clusterName",
+			ExpectedValue: "{{ .ClusterName }}",
+		},
+		{
+			Key:           "clusterContext",
+			ExpectedValue: "{{ .Values.someKey }}",
+		},
+		{
+			Key:           "templateFn",
+			ExpectedValue: "{{ index .ClusterLabels \"testLabel\" }}",
+		},
+		{
+			Key:           "syntaxError",
+			ExpectedValue: "{{ non_existent_function }}",
+		},
+	} {
+		if field, ok := valuesObj[testCase.Key]; !ok {
+			t.Fatalf("key %s not found", testCase.Key)
+		} else {
+			if field != testCase.ExpectedValue {
+				t.Fatalf("key %s was not the expected value. Expected: '%s' Actual: '%s'", testCase.Key, field, testCase.ExpectedValue)
+			}
+		}
+
+	}
+
+}
+
+const bundleYamlWithDisablePreProcessDisabled = `namespace: default
+helm:
+  disablePreProcess: false
+  releaseName: labels
+  values:
+    clusterName: "{{ .ClusterName }}"
+`
+
+func TestDisablePreProcessFlagDisabled(t *testing.T) {
+	cluster, bundle, err := getClusterAndBundle(clusterYamlWithTemplateContext, bundleYamlWithDisablePreProcessDisabled)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	err = addClusterLabels(bundle, cluster)
+	if err != nil {
+		t.Fatalf("error during cluster processing %v", err)
+	}
+
+	valuesObj := bundle.Helm.Values.Data
+
+	key := "clusterName"
+	expectedValue := "test-cluster"
+
+	if field, ok := valuesObj[key]; !ok {
+		t.Fatalf("key %s not found", key)
+	} else {
+		if field != expectedValue {
+			t.Fatalf("key %s was not the expected value. Expected: '%s' Actual: '%s'", key, field, expectedValue)
+		}
+	}
+
+}
+
+const bundleYamlWithDisablePreProcessMissing = `namespace: default
+helm:
+  releaseName: labels
+  values:
+    clusterName: "{{ .ClusterName }}"
+`
+
+func TestDisablePreProcessFlagMissing(t *testing.T) {
+	cluster, bundle, err := getClusterAndBundle(clusterYamlWithTemplateContext, bundleYamlWithDisablePreProcessMissing)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	err = addClusterLabels(bundle, cluster)
+	if err != nil {
+		t.Fatalf("error during cluster processing %v", err)
+	}
+
+	valuesObj := bundle.Helm.Values.Data
+
+	key := "clusterName"
+	expectedValue := "test-cluster"
+
+	if field, ok := valuesObj[key]; !ok {
+		t.Fatalf("key %s not found", key)
+	} else {
+		if field != expectedValue {
+			t.Fatalf("key %s was not the expected value. Expected: '%s' Actual: '%s'", key, field, expectedValue)
+		}
 	}
 
 }
