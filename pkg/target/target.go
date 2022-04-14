@@ -273,14 +273,6 @@ func addClusterLabels(opts *fleet.BundleDeploymentOptions, cluster *fleet.Cluste
 	clusterLabels := yaml.CleanAnnotationsForExport(cluster.Labels)
 	clusterAnnotations := yaml.CleanAnnotationsForExport(cluster.Annotations)
 
-	values := map[string]interface{}{
-		"ClusterNamespace":   cluster.Namespace,
-		"ClusterName":        cluster.Name,
-		"ClusterLabels":      clusterLabels,
-		"ClusterAnnotations": clusterAnnotations,
-		"Values":             templateContext,
-	}
-
 	for k, v := range cluster.Labels {
 		if strings.HasPrefix(k, "fleet.cattle.io/") || strings.HasPrefix(k, "management.cattle.io/") {
 			clusterLabels[k] = v
@@ -308,6 +300,14 @@ func addClusterLabels(opts *fleet.BundleDeploymentOptions, cluster *fleet.Cluste
 	}
 
 	if opts.Helm.DisablePreProcess == false {
+		values := map[string]interface{}{
+			"ClusterNamespace":   cluster.Namespace,
+			"ClusterName":        cluster.Name,
+			"ClusterLabels":      clusterLabels,
+			"ClusterAnnotations": clusterAnnotations,
+			"Values":             templateContext,
+		}
+
 		opts.Helm.Values.Data, err = processTemplateValues(opts.Helm.Values.Data, values)
 		if err != nil {
 			return err
