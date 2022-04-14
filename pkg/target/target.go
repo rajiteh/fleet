@@ -238,7 +238,7 @@ func (m *Manager) Targets(fleetBundle *fleet.Bundle) (result []*Target, _ error)
 			}
 			opts := options.Calculate(&fleetBundle.Spec, match.Target)
 
-			err = addClusterLabels(&opts, cluster)
+			err = preprocessHelmValues(&opts, cluster)
 			if err != nil {
 				return nil, err
 			}
@@ -266,7 +266,7 @@ func (m *Manager) Targets(fleetBundle *fleet.Bundle) (result []*Target, _ error)
 	return result, m.foldInDeployments(fleetBundle, result)
 }
 
-func addClusterLabels(opts *fleet.BundleDeploymentOptions, cluster *fleet.Cluster) (err error) {
+func preprocessHelmValues(opts *fleet.BundleDeploymentOptions, cluster *fleet.Cluster) (err error) {
 	clusterLabels := yaml.CleanAnnotationsForExport(cluster.Labels)
 	clusterAnnotations := yaml.CleanAnnotationsForExport(cluster.Annotations)
 
@@ -296,7 +296,7 @@ func addClusterLabels(opts *fleet.BundleDeploymentOptions, cluster *fleet.Cluste
 		return err
 	}
 
-	if !opts.Helm.DisablePreProcess {
+	if !opts.Helm.DisablePreprocess {
 
 		templateContext := map[string]interface{}{}
 		if cluster.Spec.TemplateContext != nil {

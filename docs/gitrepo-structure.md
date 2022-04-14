@@ -109,7 +109,7 @@ helm:
   # Override immutable resources. This could be dangerous.
   force: false
   # Disable go template pre-processing on the fleet values
-  disablePreProcess: false
+  disablePreprocess: false
 
 # A paused bundle will not update downstream clusters but instead mark the bundle
 # as OutOfSync. One can then manually confirm that a bundle should be deployed to

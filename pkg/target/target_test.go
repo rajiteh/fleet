@@ -325,9 +325,9 @@ func getClusterAndBundle(clusterYaml string, bundleYaml string) (*v1alpha1.Clust
 	return cluster, bundle, nil
 }
 
-const bundleYamlWithDisablePreProcessEnabled = `namespace: default
+const bundleYamlWithDisablePreprocessEnabled = `namespace: default
 helm:
-  disablePreProcess: true
+  disablePreprocess: true
   releaseName: labels
   values:
     clusterName: "{{ .ClusterName }}"
@@ -336,13 +336,13 @@ helm:
     syntaxError: "{{ non_existent_function }}"
 `
 
-func TestDisablePreProcessFlagEnabled(t *testing.T) {
-	cluster, bundle, err := getClusterAndBundle(clusterYamlWithTemplateContext, bundleYamlWithDisablePreProcessEnabled)
+func TestDisablePreprocessFlagEnabled(t *testing.T) {
+	cluster, bundle, err := getClusterAndBundle(clusterYamlWithTemplateContext, bundleYamlWithDisablePreprocessEnabled)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	err = addClusterLabels(bundle, cluster)
+	err = preprocessHelmValues(bundle, cluster)
 	if err != nil {
 		t.Fatalf("error during cluster processing %v", err)
 	}
@@ -382,21 +382,21 @@ func TestDisablePreProcessFlagEnabled(t *testing.T) {
 
 }
 
-const bundleYamlWithDisablePreProcessDisabled = `namespace: default
+const bundleYamlWithDisablePreprocessDisabled = `namespace: default
 helm:
-  disablePreProcess: false
+  disablePreprocess: false
   releaseName: labels
   values:
     clusterName: "{{ .ClusterName }}"
 `
 
-func TestDisablePreProcessFlagDisabled(t *testing.T) {
-	cluster, bundle, err := getClusterAndBundle(clusterYamlWithTemplateContext, bundleYamlWithDisablePreProcessDisabled)
+func TestDisablePreprocessFlagDisabled(t *testing.T) {
+	cluster, bundle, err := getClusterAndBundle(clusterYamlWithTemplateContext, bundleYamlWithDisablePreprocessDisabled)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	err = addClusterLabels(bundle, cluster)
+	err = preprocessHelmValues(bundle, cluster)
 	if err != nil {
 		t.Fatalf("error during cluster processing %v", err)
 	}
@@ -416,20 +416,20 @@ func TestDisablePreProcessFlagDisabled(t *testing.T) {
 
 }
 
-const bundleYamlWithDisablePreProcessMissing = `namespace: default
+const bundleYamlWithDisablePreprocessMissing = `namespace: default
 helm:
   releaseName: labels
   values:
     clusterName: "{{ .ClusterName }}"
 `
 
-func TestDisablePreProcessFlagMissing(t *testing.T) {
-	cluster, bundle, err := getClusterAndBundle(clusterYamlWithTemplateContext, bundleYamlWithDisablePreProcessMissing)
+func TestDisablePreprocessFlagMissing(t *testing.T) {
+	cluster, bundle, err := getClusterAndBundle(clusterYamlWithTemplateContext, bundleYamlWithDisablePreprocessMissing)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	err = addClusterLabels(bundle, cluster)
+	err = preprocessHelmValues(bundle, cluster)
 	if err != nil {
 		t.Fatalf("error during cluster processing %v", err)
 	}
