@@ -1,3 +1,4 @@
+// Package main provides the entrypoint for the fleet-controller binary (fleetcontroller)
 package main
 
 import (
@@ -5,13 +6,15 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 
+	"github.com/spf13/cobra"
+
 	"github.com/rancher/fleet/pkg/agent"
 	"github.com/rancher/fleet/pkg/fleetcontroller"
 	"github.com/rancher/fleet/pkg/version"
+
 	command "github.com/rancher/wrangler-cli"
 	_ "github.com/rancher/wrangler/pkg/generated/controllers/apiextensions.k8s.io"
 	_ "github.com/rancher/wrangler/pkg/generated/controllers/networking.k8s.io"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -20,13 +23,13 @@ var (
 
 type FleetManager struct {
 	Kubeconfig    string `usage:"Kubeconfig file"`
-	Namespace     string `usage:"namespace to watch" default:"fleet-system" env:"NAMESPACE"`
+	Namespace     string `usage:"namespace to watch" default:"cattle-fleet-system" env:"NAMESPACE"`
 	DisableGitops bool   `usage:"disable gitops components" name:"disable-gitops"`
 }
 
 func (f *FleetManager) Run(cmd *cobra.Command, args []string) error {
 	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
+		log.Println(http.ListenAndServe("localhost:6060", nil)) // nolint:gosec // Debugging only
 	}()
 	debugConfig.MustSetupDebug()
 	if err := fleetcontroller.Start(cmd.Context(), f.Namespace, f.Kubeconfig, f.DisableGitops); err != nil {

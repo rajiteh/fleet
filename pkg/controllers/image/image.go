@@ -1,3 +1,4 @@
+// Package image registers a controller for image scans. (fleetcontroller)
 package image
 
 import (
@@ -6,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -25,13 +25,17 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/sirupsen/logrus"
+
 	"github.com/rancher/fleet/pkg/apis/fleet.cattle.io/v1alpha1"
+	"github.com/rancher/fleet/pkg/durations"
 	fleetcontrollers "github.com/rancher/fleet/pkg/generated/controllers/fleet.cattle.io/v1alpha1"
 	"github.com/rancher/fleet/pkg/update"
+
 	"github.com/rancher/wrangler/pkg/condition"
 	corev1controler "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/rancher/wrangler/pkg/kstatus"
-	"github.com/sirupsen/logrus"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -41,7 +45,7 @@ import (
 var (
 	lock sync.Mutex
 
-	defaultInterval = time.Minute * 15
+	defaultInterval = durations.DefaultImageInterval
 )
 
 const (
@@ -116,7 +120,7 @@ func (h handler) onChange(image *v1alpha1.ImageScan, status v1alpha1.ImageScanSt
 		options = append(options, remote.WithAuth(auth))
 	}
 
-	tags, err := remote.ListWithContext(h.ctx, ref.Context(), options...)
+	tags, err := remote.List(ref.Context(), append(options, remote.WithContext(h.ctx))...)
 	if err != nil {
 		kstatus.SetError(image, err.Error())
 		return status, err
@@ -170,6 +174,7 @@ func (h handler) onChangeGitRepo(gitrepo *v1alpha1.GitRepo, status v1alpha1.GitR
 	if gitrepo == nil || gitrepo.DeletionTimestamp != nil {
 		return status, nil
 	}
+	logrus.Debugf("onChangeGitRepo: gitrepo %s/%s changed, checking for image scans", gitrepo.Namespace, gitrepo.Name)
 
 	imagescans, err := h.imagescans.Cache().List(gitrepo.Namespace, labels.Everything())
 	if err != nil {
@@ -206,10 +211,12 @@ func (h handler) onChangeGitRepo(gitrepo *v1alpha1.GitRepo, status v1alpha1.GitR
 		return status, nil
 	}
 
+	logrus.Debugf("onChangeGitRepo: gitrepo %s/%s changed, syncing repo for image scans", gitrepo.Namespace, gitrepo.Name)
+
 	lock.Lock()
 	defer lock.Unlock()
 	// todo: maybe we should preserve the dir
-	tmp, err := ioutil.TempDir("", fmt.Sprintf("%s-%s", gitrepo.Namespace, gitrepo.Name))
+	tmp, err := os.MkdirTemp("", fmt.Sprintf("%s-%s", gitrepo.Namespace, gitrepo.Name))
 	if err != nil {
 		kstatus.SetError(gitrepo, err.Error())
 		return status, err
@@ -279,7 +286,7 @@ func shouldSync(gitrepo *v1alpha1.GitRepo) bool {
 		}
 	}
 
-	if time.Now().Sub(gitrepo.Status.LastSyncedImageScanTime.Time) < interval.Duration {
+	if time.Since(gitrepo.Status.LastSyncedImageScanTime.Time) < interval.Duration {
 		return false
 	}
 	return true
@@ -388,7 +395,7 @@ func shouldScan(image *v1alpha1.ImageScan) bool {
 		return true
 	}
 
-	if time.Now().Sub(image.Status.LastScanTime.Time) < interval.Duration {
+	if time.Since(image.Status.LastScanTime.Time) < interval.Duration {
 		return false
 	}
 	return true

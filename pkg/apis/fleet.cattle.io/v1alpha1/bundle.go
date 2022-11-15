@@ -131,9 +131,10 @@ type NonReadyResource struct {
 }
 
 var (
-	BundleConditionReady              = "Ready"
-	BundleDeploymentConditionReady    = "Ready"
-	BundleDeploymentConditionDeployed = "Deployed"
+	BundleConditionReady               = "Ready"
+	BundleDeploymentConditionReady     = "Ready"
+	BundleDeploymentConditionInstalled = "Installed"
+	BundleDeploymentConditionDeployed  = "Deployed"
 )
 
 type BundleStatus struct {
@@ -222,18 +223,23 @@ type KustomizeOptions struct {
 }
 
 type HelmOptions struct {
-	Chart             string       `json:"chart,omitempty"`
-	Repo              string       `json:"repo,omitempty"`
-	ReleaseName       string       `json:"releaseName,omitempty"`
-	Version           string       `json:"version,omitempty"`
-	TimeoutSeconds    int          `json:"timeoutSeconds,omitempty"`
-	Values            *GenericMap  `json:"values,omitempty"`
-	ValuesFrom        []ValuesFrom `json:"valuesFrom,omitempty"`
-	Force             bool         `json:"force,omitempty"`
-	TakeOwnership     bool         `json:"takeOwnership,omitempty"`
-	MaxHistory        int          `json:"maxHistory,omitempty"`
-	ValuesFiles       []string     `json:"valuesFiles,omitempty"`
-	DisablePreprocess bool         `json:"disablePreprocess,omitempty"`
+	Chart          string       `json:"chart,omitempty"`
+	Repo           string       `json:"repo,omitempty"`
+	ReleaseName    string       `json:"releaseName,omitempty"`
+	Version        string       `json:"version,omitempty"`
+	TimeoutSeconds int          `json:"timeoutSeconds,omitempty"`
+	Values         *GenericMap  `json:"values,omitempty"`
+	ValuesFrom     []ValuesFrom `json:"valuesFrom,omitempty"`
+	Force          bool         `json:"force,omitempty"`
+	TakeOwnership  bool         `json:"takeOwnership,omitempty"`
+	MaxHistory     int          `json:"maxHistory,omitempty"`
+	ValuesFiles    []string     `json:"valuesFiles,omitempty"`
+
+	// Atomic sets the --atomic flag when Helm is performing an upgrade
+	Atomic bool `json:"atomic,omitempty"`
+
+	// DisablePreprocess deactivates fleet YAML templating
+	DisablePreprocess bool `json:"disablePreprocess,omitempty"`
 }
 
 // Define helm values that can come from configmap, secret or external. Credit: https://github.com/fluxcd/helm-operator/blob/0cfea875b5d44bea995abe7324819432070dfbdc/pkg/apis/helm.fluxcd.io/v1/types_helmrelease.go#L439

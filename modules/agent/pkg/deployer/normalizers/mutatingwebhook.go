@@ -1,8 +1,9 @@
 package normalizers
 
 import (
-	"github.com/rancher/wrangler/pkg/objectset"
 	"github.com/sirupsen/logrus"
+
+	"github.com/rancher/wrangler/pkg/objectset"
 	adregv1 "k8s.io/api/admissionregistration/v1"
 	adregv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -83,7 +84,7 @@ func setMutatingWebhookV1CacertNil(un *unstructured.Unstructured, index int) err
 	err := runtime.DefaultUnstructuredConverter.FromUnstructured(un.Object, &webhook)
 	if err != nil {
 		logrus.Errorf("Failed to convert unstructured to webhook, err: %v", err)
-		return nil
+		return err
 	}
 
 	if index >= len(webhook.Webhooks) {
@@ -93,12 +94,12 @@ func setMutatingWebhookV1CacertNil(un *unstructured.Unstructured, index int) err
 	newObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&webhook)
 	if err != nil {
 		logrus.Errorf("Failed to convert unstructured to webhook, err: %v", err)
-		return nil
+		return err
 	}
 	if webhook.Webhooks != nil {
 		if err = unstructured.SetNestedField(un.Object, newObj["webhooks"], "webhooks"); err != nil {
 			logrus.Errorf("MutatingWebhook normalization error: %v", err)
-			return nil
+			return err
 		}
 	}
 	return nil
@@ -109,7 +110,7 @@ func setMutatingWebhookV1beta1CacertNil(un *unstructured.Unstructured, index int
 	err := runtime.DefaultUnstructuredConverter.FromUnstructured(un.Object, &webhook)
 	if err != nil {
 		logrus.Error("Failed to convert unstructured to webhook")
-		return nil
+		return err
 	}
 
 	if index >= len(webhook.Webhooks) {
@@ -119,12 +120,12 @@ func setMutatingWebhookV1beta1CacertNil(un *unstructured.Unstructured, index int
 	newObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&webhook)
 	if err != nil {
 		logrus.Errorf("Failed to convert unstructured to webhook, err: %v", err)
-		return nil
+		return err
 	}
 	if webhook.Webhooks != nil {
 		if err = unstructured.SetNestedField(un.Object, newObj["webhooks"], "webhooks"); err != nil {
 			logrus.Errorf("MutatingWebhook normalization error: %v", err)
-			return nil
+			return err
 		}
 	}
 	return nil

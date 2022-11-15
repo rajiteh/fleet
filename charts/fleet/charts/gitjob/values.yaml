@@ -1,10 +1,10 @@
 gitjob:
   repository: rancher/gitjob
-  tag: v0.1.26
+  tag: v0.1.32
 
 tekton:
   repository: rancher/tekton-utils
-  tag: v0.1.5
+  tag: v0.1.7
 
 global:
   cattle:
@@ -22,5 +22,8 @@ noProxy: 127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local
 nodeSelector: {}
 ## List of node taints to tolerate (requires Kubernetes >= 1.6)
 tolerations: []
+
+## PriorityClassName assigned to deployment.
+priorityClassName: ""
 
 debug: false

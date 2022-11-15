@@ -59,6 +59,14 @@ Fleet clusters are tied directly to native Rancher object types accordingly:
 
 ---
 
+## Local Development Workflow: Fleet Standalone - For Running E2E Tests
+
+Development scripts are provided under `/dev` to make it easier setting up a local development Fleet standalone environment and running the E2E tests against it.These scripts are intended only for local Fleet development, not for production nor any other real world scenario.
+
+Setting up the local development environment and running the E2E tests is described in the [/dev/README.md](/dev/README.md).
+
+---
+
 ## Local Development Workflow: Fleet in Rancher
 
 All steps in this guide assume your current working directory is the root of the repository.
@@ -204,20 +212,21 @@ The following steps can help you do so:
 8. Fork [rancher/rancher](https://github.com/rancher/rancher) and change the charts URL to point to your fork
 9. Start Rancher locally (instructions: [Rancher Wiki](https://github.com/rancher/rancher/wiki/Setting-Up-Rancher-2.0-Development-Environment)) and your fork's chart should be deployed
 
-## Advanced: Standalone Fleet
+## Advanced: Standalone Fleet (Obsolete How-to)
 
-Standalone Fleet is not officially tested by Rancher QA, but we should not break standalone Fleet either.
-If you would like to test standalone Fleet, you can do the following: build and push your `fleet-agent` (`linux-amd64` image by default), install your Fleet charts, and then replace the controller deployment with your local controller build.
+Continous Integration executes most [E2E tests](/e2e/) against Fleet Standalone. For developing purposes we recommend using our [dev scripts](#local-development-workflow-fleet-standalone---for-running-e2e-tests) instead of this how-to. We keep this part only for documental reasons.
+
+Build and push your `fleet-agent` (`linux-amd64` image by default), install your Fleet charts, and then replace the controller deployment with your local controller build.
 
 ```sh
 (
     go fmt ./...
     REPO=$AGENT_REPO make agent-dev
     docker push $AGENT_REPO/fleet-agent:dev
-    for i in fleet-system fleet-default fleet-local; do kubectl create namespace $i; done
-    helm install -n fleet-system fleet-crd ./charts/fleet-crd
-    helm install -n fleet-system fleet --set agentImage.repository=$AGENT_REPO/fleet-agent --set agentImage.imagePullPolicy=Always ./charts/fleet
-    kubectl delete deployment -n fleet-system fleet-controller
+    for i in cattle-fleet-system fleet-default fleet-local; do kubectl create namespace $i; done
+    helm install -n cattle-fleet-system fleet-crd ./charts/fleet-crd
+    helm install -n cattle-fleet-system fleet --set agentImage.repository=$AGENT_REPO/fleet-agent --set agentImage.imagePullPolicy=Always ./charts/fleet
+    kubectl delete deployment -n cattle-fleet-system fleet-controller
     go run cmd/fleetcontroller/main.go
 )
 ```
@@ -228,10 +237,10 @@ We'll use the latest Git tag for this, and _assume_ it is available on DockerHub
 ```sh
 (
     go fmt ./...
-    for i in fleet-system fleet-default fleet-local; do kubectl create namespace $i; done
-    helm install -n fleet-system fleet-crd ./charts/fleet-crd
-    helm install -n fleet-system fleet --set agentImage.tag=$(git tag --sort=taggerdate | tail -1) ./charts/fleet
-    kubectl delete deployment -n fleet-system fleet-controller
+    for i in cattle-fleet-system fleet-default fleet-local; do kubectl create namespace $i; done
+    helm install -n cattle-fleet-system fleet-crd ./charts/fleet-crd
+    helm install -n cattle-fleet-system fleet --set agentImage.tag=$(git tag --sort=taggerdate | tail -1) ./charts/fleet
+    kubectl delete deployment -n cattle-fleet-system fleet-controller
     go run cmd/fleetcontroller/main.go
 )
 ```
@@ -266,6 +275,18 @@ To learn more, please refer to the [Istio documentation for Rancher](https://ran
 This section contains information on releasing Fleet.
 **Please note: it may be sparse since it is only intended for maintainers.**
 
+---
+
+### Cherry Picking Bug Fixes To Releases
+
+With releases happening on release branches, there are times where a bug fix needs to be handled on the `master` branch and pulled into a release that happens through a release branch.
+
+All bug fixes should first happen on the `master` branch.
+
+If a bug fix needs to be brought into a release, such as during the release candidate phase, it should be cherry picked from the `master` branch to the release branch via a pull request. The pull request should be prefixed with the major and minor version for the release (e.g., `[0.4]`) to illustrate it's for a release branch.
+
+---
+
 ### Pre-Release
 
 1. Ensure that all modules are at their desired versions in `go.mod`
@@ -275,14 +296,14 @@ This section contains information on releasing Fleet.
 
 ### Release Candidates
 
-1. Checkout `master`
+1. Checkout the release branch (e.g., `release-0.4`) or create it based off of the latest `master` branch. The branch name should be the first 2 parts of the semantic version with `release-` prepended.
 1. Use `git tag` and append the tag from the **Pre-Release** section with `-rcX` where `X` is an unsigned integer that starts with `1` (if `-rcX` already exists, increment `X` by one)
 
 ### Full Releases
 
 1. Open a draft release on the GitHub releases page
 1. Send draft link to maintainers with view permissions to ensure that contents are valid
-1. Create GitHub release and create a new tag while doing so (using the tag from the **Pre-Release** section)
+1. Create GitHub release and create a new tag on the appropriate release branch while doing so (using the tag from the **Pre-Release** section)
 
 ### Post-Release
 

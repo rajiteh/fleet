@@ -3,17 +3,17 @@ package deployer
 import (
 	"encoding/json"
 	"sort"
-	"strings"
 
-	"github.com/argoproj/argo-cd/pkg/apis/application/v1alpha1"
-	"github.com/argoproj/argo-cd/util/argo"
-	"github.com/argoproj/gitops-engine/pkg/diff"
 	jsonpatch "github.com/evanphx/json-patch"
+
+	"github.com/rancher/fleet/modules/agent/pkg/deployer/internal/diff"
+	"github.com/rancher/fleet/modules/agent/pkg/deployer/internal/diffnormalize"
+	"github.com/rancher/fleet/modules/agent/pkg/deployer/internal/resource"
 	fleetnorm "github.com/rancher/fleet/modules/agent/pkg/deployer/normalizers"
 	fleet "github.com/rancher/fleet/pkg/apis/fleet.cattle.io/v1alpha1"
+	"github.com/rancher/fleet/pkg/helmdeployer"
 	"github.com/rancher/wrangler/pkg/apply"
 	"github.com/rancher/wrangler/pkg/merr"
-	"github.com/rancher/wrangler/pkg/name"
 	"github.com/rancher/wrangler/pkg/objectset"
 	"github.com/rancher/wrangler/pkg/summary"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -33,10 +33,7 @@ func (m *Manager) plan(bd *fleet.BundleDeployment, ns string, objs ...runtime.Ob
 		ns = m.defaultNamespace
 	}
 
-	a, err := m.getApply(bd, ns)
-	if err != nil {
-		return apply.Plan{}, err
-	}
+	a := m.getApply(bd, ns)
 	plan, err := a.DryRun(objs...)
 	if err != nil {
 		return plan, err
@@ -100,7 +97,7 @@ func (m *Manager) plan(bd *fleet.BundleDeployment, ns string, objs ...runtime.Ob
 }
 
 func (m *Manager) normalizers(live objectset.ObjectByGVK, bd *fleet.BundleDeployment) (diff.Normalizer, error) {
-	var ignore []v1alpha1.ResourceIgnoreDifferences
+	var ignore []resource.ResourceIgnoreDifferences
 	jsonPatchNorm := &fleetnorm.JSONPatchNormalizer{}
 	if bd.Spec.Options.Diff != nil {
 		for _, patch := range bd.Spec.Options.Diff.ComparePatches {
@@ -108,7 +105,7 @@ func (m *Manager) normalizers(live objectset.ObjectByGVK, bd *fleet.BundleDeploy
 			if err != nil {
 				return nil, err
 			}
-			ignore = append(ignore, v1alpha1.ResourceIgnoreDifferences{
+			ignore = append(ignore, resource.ResourceIgnoreDifferences{
 				Namespace:    patch.Namespace,
 				Name:         patch.Name,
 				Kind:         patch.Kind,
@@ -132,7 +129,7 @@ func (m *Manager) normalizers(live objectset.ObjectByGVK, bd *fleet.BundleDeploy
 		}
 	}
 
-	ignoreNorm, err := argo.NewDiffNormalizer(ignore, nil)
+	ignoreNorm, err := diffnormalize.NewDiffNormalizer(ignore, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -141,14 +138,15 @@ func (m *Manager) normalizers(live objectset.ObjectByGVK, bd *fleet.BundleDeploy
 	return norm, nil
 }
 
-func (m *Manager) getApply(bd *fleet.BundleDeployment, ns string) (apply.Apply, error) {
+func (m *Manager) getApply(bd *fleet.BundleDeployment, ns string) apply.Apply {
 	apply := m.apply
 	return apply.
 		WithIgnorePreviousApplied().
-		WithSetID(GetSetID(bd.Name, m.labelPrefix, m.labelSuffix)).
-		WithDefaultNamespace(ns), nil
+		WithSetID(helmdeployer.GetSetID(bd.Name, m.labelPrefix, m.labelSuffix)).
+		WithDefaultNamespace(ns)
 }
 
+// MonitorBundle returns the DeploymentStatus for the given bundledeployment
 func (m *Manager) MonitorBundle(bd *fleet.BundleDeployment) (DeploymentStatus, error) {
 	var status DeploymentStatus
 
@@ -175,20 +173,6 @@ func (m *Manager) MonitorBundle(bd *fleet.BundleDeployment) (DeploymentStatus, e
 	}
 
 	return status, nil
-}
-
-func GetSetID(bundleID, labelPrefix, labelSuffix string) string {
-	// bundle is fleet-agent bundle, we need to use setID fleet-agent-bootstrap since it was applied with import controller
-	if strings.HasPrefix(bundleID, "fleet-agent") {
-		if labelSuffix == "" {
-			return "fleet-agent-bootstrap"
-		}
-		return name.SafeConcatName("fleet-agent-bootstrap", labelSuffix)
-	}
-	if labelSuffix != "" {
-		return name.SafeConcatName(labelPrefix, bundleID, labelSuffix)
-	}
-	return name.SafeConcatName(labelPrefix, bundleID)
 }
 
 func sortKey(f fleet.ModifiedStatus) string {
@@ -252,7 +236,7 @@ func modified(plan apply.Plan) (result []fleet.ModifiedStatus) {
 		}
 	}
 
-	return
+	return result
 }
 
 func nonReady(plan apply.Plan) (result []fleet.NonReadyStatus) {
