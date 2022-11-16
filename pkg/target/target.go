@@ -593,9 +593,13 @@ func tplFuncMap() template.FuncMap {
 
 func processTemplateValues(valuesMap map[string]interface{}, templateContext map[string]interface{}) (map[string]interface{}, error) {
 	tplFn := template.New("values").Funcs(tplFuncMap()).Option("missingkey=error")
-	tplResult, err := templateSubstitutions(valuesMap, templateContext, tplFn)
+	conversionCtx := NewTplConversionCtx()
+	conversionCtx.AddFuncs(tplFn)
+
+	preparedTemplateContext := convertToStringsDeep(templateContext)
+	tplResult, err := templateSubstitutions(valuesMap, preparedTemplateContext, tplFn, conversionCtx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failure in templating %w", err)
 	}
 	compiledYaml, ok := tplResult.(map[string]interface{})
 	if !ok {
@@ -605,29 +609,32 @@ func processTemplateValues(valuesMap map[string]interface{}, templateContext map
 	return compiledYaml, nil
 }
 
-func templateSubstitutions(src interface{}, templateContext map[string]interface{}, tplFn *template.Template) (interface{}, error) {
+func templateSubstitutions(src interface{}, templateContext interface{},
+	tplFn *template.Template, conversionCtx tplTypeConversionContext) (interface{}, error) {
+
 	switch tplVal := src.(type) {
 	case string:
 		tpl, err := tplFn.Parse(tplVal)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unable to parse: %w", err)
 		}
 
 		var tplBytes bytes.Buffer
 		defer func() {
 			if r := recover(); r != nil {
-				err = fmt.Errorf("failed to process template substitution for strung '%s': [%v]", tplVal, err)
+				err = fmt.Errorf("failed to process template substitution for string '%s': [%v]", tplVal, err)
 			}
 		}()
 		err = tpl.Execute(&tplBytes, templateContext)
 		if err != nil {
 			return nil, fmt.Errorf("failed to process template substitution for string '%s': [%v]", tplVal, err)
 		}
-		return tplBytes.String(), nil
+
+		return conversionCtx.Unwrap(tplBytes.String()), nil
 	case map[string]interface{}:
 		newMap := make(map[string]interface{})
 		for key, val := range tplVal {
-			processedKey, err := templateSubstitutions(key, templateContext, tplFn)
+			processedKey, err := templateSubstitutions(key, templateContext, tplFn, conversionCtx)
 			if err != nil {
 				return nil, err
 			}
@@ -635,7 +642,7 @@ func templateSubstitutions(src interface{}, templateContext map[string]interface
 			if !ok {
 				return nil, fmt.Errorf("expected a string to be returned, but instead got [%T]", processedKey)
 			}
-			if newMap[keyAsString], err = templateSubstitutions(val, templateContext, tplFn); err != nil {
+			if newMap[keyAsString], err = templateSubstitutions(val, templateContext, tplFn, conversionCtx); err != nil {
 				return nil, err
 			}
 		}
@@ -643,7 +650,7 @@ func templateSubstitutions(src interface{}, templateContext map[string]interface
 	case []interface{}:
 		newSlice := make([]interface{}, len(tplVal))
 		for i, v := range tplVal {
-			newVal, err := templateSubstitutions(v, templateContext, tplFn)
+			newVal, err := templateSubstitutions(v, templateContext, tplFn, conversionCtx)
 			if err != nil {
 				return nil, err
 			}
