@@ -117,6 +117,9 @@ helm:
     clusterNamespace: "{{ .ClusterNamespace }}"
     fleetClusterName: "{{ .ClusterName }}"
     reallyLongClusterName: kubernets.io/cluster/{{ index .ClusterLabels "really-long-label-name-with-many-many-characters-in-it" }}
+    replicaCount: "{{ .Values.replicaCount | asInt }}"
+    someFloat: "{{ .Values.someFloat | asFloat }}"
+    nilWhenEmpty: '{{ index .Values "missingValue" | asNullable }}'
     customStruct:
       - name: "{{ .Values.topLevel }}"
         key1: value1
@@ -151,6 +154,8 @@ func TestProcessTemplateValues(t *testing.T) {
 			"beta",
 			"omega",
 		},
+		"replicaCount": 2,
+		"someFloat":    0.544,
 	}
 
 	clusterLabels := map[string]string{
@@ -225,6 +230,37 @@ func TestProcessTemplateValues(t *testing.T) {
 
 	if reallyLongClusterName != "kubernets.io/cluster/foobar" {
 		t.Fatal("unable to assert correct value reallyLongClusterName")
+	}
+
+	replicaCount, ok := templatedValues["replicaCount"]
+	if !ok {
+		t.Fatal("key replicaCount not found")
+	}
+
+	// It's an integer in the output
+	var replicaCountValue int64 = 2
+	if replicaCount != replicaCountValue {
+		t.Fatal("unable to assert correct value replicaCount")
+	}
+
+	someFloat, ok := templatedValues["someFloat"]
+	if !ok {
+		t.Fatal("key someFloat not found")
+	}
+
+	// It's a float in the output
+	var someFloatValue float64 = 0.544
+	if someFloat != someFloatValue {
+		t.Fatal("unable to assert correct value someFloat")
+	}
+
+	nilWhenEmpty, ok := templatedValues["nilWhenEmpty"]
+	if !ok {
+		t.Fatal("key nilWhenEmpty not found")
+	}
+
+	if nilWhenEmpty != nil {
+		t.Fatal("unable to assert correct value nilWhenEmpty")
 	}
 
 	customStruct, ok := templatedValues["customStruct"].([]interface{})

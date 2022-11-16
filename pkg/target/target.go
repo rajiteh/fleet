@@ -594,8 +594,17 @@ func tplFuncMap() template.FuncMap {
 
 func processTemplateValues(valuesMap map[string]interface{}, templateContext map[string]interface{}) (map[string]interface{}, error) {
 	tplFn := template.New("values").Funcs(tplFuncMap()).Option("missingkey=error")
+
+	conversionCtx := NewTplConversionCtx()
+	conversionCtx.AddFuncs(tplFn)
+
+	preparedTemplateContext, err := convertToStringsDeep(templateContext, 0)
+	if err != nil {
+		return nil, err
+	}
+
 	recursionDepth := 0
-	tplResult, err := templateSubstitutions(valuesMap, templateContext, tplFn, recursionDepth)
+	tplResult, err := templateSubstitutions(valuesMap, preparedTemplateContext, tplFn, conversionCtx, recursionDepth)
 	if err != nil {
 		return nil, err
 	}
@@ -607,16 +616,16 @@ func processTemplateValues(valuesMap map[string]interface{}, templateContext map
 	return compiledYaml, nil
 }
 
-func templateSubstitutions(src interface{}, templateContext map[string]interface{}, tplFn *template.Template, recursionDepth int) (interface{}, error) {
+func templateSubstitutions(src any, templateContext any,
+	tplFn *template.Template, conversionCtx tplTypeConversionContext, recursionDepth int) (any, error) {
 	if recursionDepth > maxTemplateRecursionDepth {
 		return nil, fmt.Errorf("maximum recursion depth of %v exceeded for current templating operation, too many nested values", maxTemplateRecursionDepth)
 	}
-
 	switch tplVal := src.(type) {
 	case string:
 		tpl, err := tplFn.Parse(tplVal)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unable to parse: %w", err)
 		}
 
 		var tplBytes bytes.Buffer
@@ -629,11 +638,12 @@ func templateSubstitutions(src interface{}, templateContext map[string]interface
 		if err != nil {
 			return nil, fmt.Errorf("failed to process template substitution for string '%s': [%v]", tplVal, err)
 		}
-		return tplBytes.String(), nil
+
+		return conversionCtx.Unwrap(tplBytes.String()), nil
 	case map[string]interface{}:
 		newMap := make(map[string]interface{})
 		for key, val := range tplVal {
-			processedKey, err := templateSubstitutions(key, templateContext, tplFn, recursionDepth+1)
+			processedKey, err := templateSubstitutions(key, templateContext, tplFn, conversionCtx, recursionDepth+1)
 			if err != nil {
 				return nil, err
 			}
@@ -641,7 +651,7 @@ func templateSubstitutions(src interface{}, templateContext map[string]interface
 			if !ok {
 				return nil, fmt.Errorf("expected a string to be returned, but instead got [%T]", processedKey)
 			}
-			if newMap[keyAsString], err = templateSubstitutions(val, templateContext, tplFn, recursionDepth+1); err != nil {
+			if newMap[keyAsString], err = templateSubstitutions(val, templateContext, tplFn, conversionCtx, recursionDepth+1); err != nil {
 				return nil, err
 			}
 		}
@@ -649,7 +659,7 @@ func templateSubstitutions(src interface{}, templateContext map[string]interface
 	case []interface{}:
 		newSlice := make([]interface{}, len(tplVal))
 		for i, v := range tplVal {
-			newVal, err := templateSubstitutions(v, templateContext, tplFn, recursionDepth+1)
+			newVal, err := templateSubstitutions(v, templateContext, tplFn, conversionCtx, recursionDepth+1)
 			if err != nil {
 				return nil, err
 			}
