@@ -33,6 +33,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/Masterminds/sprig/v3"
+
+	"github.com/variantdev/vals"
 )
 
 var (
@@ -40,6 +42,7 @@ var (
 	defLimit                    = intstr.FromString("100%")
 	defAutoPartitionSize        = intstr.FromString("25%")
 	defMaxUnavailablePartitions = intstr.FromInt(0)
+	valsRuntime                 *vals.Runtime
 )
 
 const maxTemplateRecursionDepth = 50
@@ -344,6 +347,14 @@ func preprocessHelmValues(opts *fleet.BundleDeploymentOptions, cluster *fleet.Cl
 		if err != nil {
 			return err
 		}
+		logrus.Debugf("templating completed for %v", opts.Helm.ReleaseName)
+
+		opts.Helm.Values.Data, err = processSecretValues(opts.Helm.Values.Data)
+		if err != nil {
+			return fmt.Errorf("vals eval: Could not resolve secrets - %v", err)
+		}
+		logrus.Debugf("secret resolution completed for %v", opts.Helm.ReleaseName)
+
 		logrus.Debugf("preProcess completed for %v", opts.Helm.ReleaseName)
 	}
 
@@ -696,4 +707,21 @@ func processLabelValues(valuesMap map[string]interface{}, clusterLabels map[stri
 	}
 
 	return nil
+}
+
+func processSecretValues(valuesMap map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+
+	// Initialize runtime if not already exist, used for caching and token refresh
+	if valsRuntime == nil {
+		valsRuntime, err = vals.New(vals.Options{CacheSize: 256})
+		if err != nil {
+			return nil, err
+		}
+	}
+	decryptedValues, err := valsRuntime.Eval(valuesMap)
+	if err != nil {
+		return nil, fmt.Errorf("vals eval: Could not resolve secrets - %v", err)
+	}
+	return decryptedValues, nil
 }

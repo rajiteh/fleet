@@ -238,7 +238,7 @@ type HelmOptions struct {
 	// Atomic sets the --atomic flag when Helm is performing an upgrade
 	Atomic bool `json:"atomic,omitempty"`
 
-	// DisablePreProcess disables template processing in values
+	// DisablePreProcess disables template and secrets processing in values
 	DisablePreProcess bool `json:"disablePreProcess,omitempty"`
 }
 
